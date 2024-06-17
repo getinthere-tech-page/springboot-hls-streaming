@@ -4,24 +4,93 @@
     <title>Video Streaming</title>
     <link href="https://vjs.zencdn.net/7.11.4/video-js.css" rel="stylesheet" />
     <script src="https://vjs.zencdn.net/7.11.4/video.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/videojs-contrib-hls/5.14.1/videojs-contrib-hls.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        .loader {
+            border: 16px solid #f3f3f3;
+            border-top: 16px solid #3498db;
+            border-radius: 50%;
+            width: 120px;
+            height: 120px;
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        .vjs-big-play-button {
+            display: none !important; /* 큰 재생 버튼 숨기기 */
+        }
+    </style>
 </head>
 <body>
 <h1>Stream Video</h1>
 <input type="text" id="videoPath" placeholder="Enter M3U8 file path" />
 <button onclick="loadVideo()">Load Video</button>
-<video id="video" class="video-js vjs-default-skin" controls preload="auto" width="640" height="264">
-</video>
+<div class="overlay" id="loader" style="display:none;">
+    <div class="loader"></div>
+</div>
+<video id="video" class="video-js vjs-default-skin" controls preload="auto" width="640" height="264"></video>
 <script>
     function loadVideo() {
         const videoPath = document.getElementById('videoPath').value;
         const player = videojs('video');
-        player.src({
-            src: videoPath,
-            type: 'application/x-mpegURL'
-        });
-        player.play();
+        const loader = document.getElementById('loader');
+        loader.style.display = 'block';
+
+        if (Hls.isSupported()) {
+            const hls = new Hls();
+            hls.loadSource(videoPath);
+            hls.attachMedia(player.tech_.el_);
+            hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                console.log('Manifest parsed');
+                player.play().catch(error => {
+                    console.error('Error attempting to play:', error);
+                });
+                loader.style.display = 'none';
+            });
+
+            hls.on(Hls.Events.LEVEL_LOADED, function(event, data) {
+                console.log('LEVEL_LOADED:', data);
+            });
+
+            hls.on(Hls.Events.FRAG_LOADED, function(event, data) {
+                console.log('FRAG_LOADED:', data);
+            });
+
+            hls.on(Hls.Events.ERROR, function(event, data) {
+                console.error('Error occurred:', data);
+                loader.style.display = 'none';
+            });
+        } else if (player.canPlayType('application/vnd.apple.mpegurl')) {
+            player.src({
+                src: videoPath,
+                type: 'application/x-mpegURL'
+            });
+            player.play().catch(error => {
+                console.error('Error attempting to play:', error);
+            });
+            loader.style.display = 'none';
+        }
     }
+
+    videojs('video', {
+        controls: true,
+        autoplay: true,
+        preload: 'auto'
+    });
 </script>
 </body>
 </html>

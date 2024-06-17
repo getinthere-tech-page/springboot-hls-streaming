@@ -11,6 +11,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -35,13 +37,10 @@ public class VideoService {
     }
 
     public String uploadAndEncodeVideo(MultipartFile file) throws IOException {
-        // 저장할 파일 경로 설정
         String originalFilename = file.getOriginalFilename();
         if (originalFilename == null) {
             throw new IllegalArgumentException("파일 이름이 비어 있습니다.");
         }
-
-        originalFilename = originalFilename.replaceAll("[^\\x00-\\x7F]", "").replaceAll(" ", "_");
 
         String baseName = originalFilename.substring(0, originalFilename.lastIndexOf('.'));
         String inputFilePath = videoLocation.resolve(originalFilename).toString();

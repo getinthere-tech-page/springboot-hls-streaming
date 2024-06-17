@@ -2,6 +2,58 @@
 <html>
 <head>
     <title>Video Upload</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <style>
+        /* 로딩 스피너 스타일 */
+        .loader {
+            border: 16px solid #f3f3f3; /* Light grey */
+            border-top: 16px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 120px;
+            height: 120px;
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .progress-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #fff;
+        }
+
+        .progress-bar {
+            width: 100%;
+            background-color: #ddd;
+        }
+
+        .progress-bar div {
+            height: 30px;
+            width: 0;
+            background-color: #4caf50;
+            text-align: center;
+            line-height: 30px;
+            color: white;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script>
         async function uploadVideo() {
             const fileInput = document.getElementById('file');
@@ -9,16 +61,42 @@
             const formData = new FormData();
             formData.append('file', file);
 
+            const overlay = document.createElement('div');
+            overlay.className = 'overlay';
+            overlay.innerHTML = `
+                <div class="progress-container">
+                    <div class="loader"></div>
+                    <div class="progress-bar"><div></div></div>
+                    <p id="progress-text">0%</p>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
             try {
-                const response = await fetch('http://localhost:8080/videos/upload', {
-                    method: 'POST',
-                    body: formData
+                const response = await axios.post('http://localhost:8080/videos/upload', formData, {
+                    onUploadProgress: function (event) {
+                        if (event.lengthComputable) {
+                            const percentComplete = (event.loaded / event.total) * 100;
+                            const progressBar = document.querySelector('.progress-bar div');
+                            const progressText = document.getElementById('progress-text');
+
+                            progressBar.style.width = percentComplete + '%';
+                            progressBar.innerHTML = percentComplete.toFixed(2) + '%';
+                            progressText.innerText = percentComplete.toFixed(2) + '%';
+                        }
+                    }
                 });
-                const result = await response.text();
-                document.getElementById('result').innerText = 'Upload successful: ' + result;
+
+                if (response.status === 200) {
+                    document.getElementById('result').innerText = 'Upload successful: ' + response.data;
+                } else {
+                    document.getElementById('result').innerText = 'Upload failed';
+                }
             } catch (error) {
                 console.error('Error uploading file:', error);
                 document.getElementById('result').innerText = 'Upload failed';
+            } finally {
+                document.body.removeChild(overlay);
             }
         }
     </script>
