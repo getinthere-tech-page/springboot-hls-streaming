@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Video Streaming</title>
+    <link href="https://vjs.zencdn.net/7.11.4/video-js.css" rel="stylesheet" />
+    <script src="https://vjs.zencdn.net/7.11.4/video.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/videojs-contrib-hls/5.14.1/videojs-contrib-hls.min.js"></script>
+</head>
+<body>
+<h1>Stream Video</h1>
+<input type="text" id="videoPath" placeholder="Enter M3U8 file path" />
+<button onclick="loadVideo()">Load Video</button>
+<video id="video" class="video-js vjs-default-skin" controls preload="auto" width="640" height="264">
+</video>
+<script>
+    function loadVideo() {
+        const videoPath = document.getElementById('videoPath').value;
+        const player = videojs('video');
+        player.src({
+            src: videoPath,
+            type: 'application/x-mpegURL'
+        });
+        player.play();
+    }
+</script>
+</body>
+</html>

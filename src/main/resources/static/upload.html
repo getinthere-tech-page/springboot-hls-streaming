@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Video Upload</title>
+    <script>
+        async function uploadVideo() {
+            const fileInput = document.getElementById('file');
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('http://localhost:8080/videos/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.text();
+                document.getElementById('result').innerText = 'Upload successful: ' + result;
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                document.getElementById('result').innerText = 'Upload failed';
+            }
+        }
+    </script>
+</head>
+<body>
+<h1>Upload Video</h1>
+<input type="file" id="file" />
+<button onclick="uploadVideo()">Upload</button>
+<p id="result"></p>
+</body>
+</html>
