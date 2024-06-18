@@ -1,95 +1,91 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Video Streaming</title>
-    <link href="https://vjs.zencdn.net/7.11.4/video-js.css" rel="stylesheet" />
+    <meta charset="UTF-8">
+    <title>HLS Video Player</title>
+    <link href="https://vjs.zencdn.net/7.11.4/video-js.css" rel="stylesheet">
     <script src="https://vjs.zencdn.net/7.11.4/video.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <style>
-        .loader {
-            border: 16px solid #f3f3f3;
-            border-top: 16px solid #3498db;
-            border-radius: 50%;
-            width: 120px;
-            height: 120px;
-            animation: spin 2s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-        }
-        .vjs-big-play-button {
-            display: none !important; /* 큰 재생 버튼 숨기기 */
-        }
-    </style>
 </head>
 <body>
 <h1>Stream Video</h1>
-<input type="text" id="videoPath" placeholder="Enter M3U8 file path" />
-<button onclick="loadVideo()">Load Video</button>
-<div class="overlay" id="loader" style="display:none;">
-    <div class="loader"></div>
-</div>
-<video id="video" class="video-js vjs-default-skin" controls preload="auto" width="640" height="264"></video>
+<video id="video" class="video-js vjs-default-skin" controls preload="auto" width="640" height="264" muted></video>
+<div id="currentTimeDisplay">Current Time: 0</div>
+
 <script>
-    function loadVideo() {
-        const videoPath = document.getElementById('videoPath').value;
-        const player = videojs('video');
-        const loader = document.getElementById('loader');
-        loader.style.display = 'block';
+    document.addEventListener('DOMContentLoaded', function() {
+        const videoPath = '/video/good.m3u8';
+        const video = document.getElementById('video');
+        const currentTimeDisplay = document.getElementById('currentTimeDisplay');
 
-        if (Hls.isSupported()) {
-            const hls = new Hls();
+
+
+            let hls = new Hls({
+                maxFragLookUpTolerance: 0.2,
+                maxBufferLength: 30,
+                maxMaxBufferLength: 60,
+                maxBufferSize: 60 * 1000 * 1000,
+                maxBufferHole: 0.5,
+                maxSeekHole: 0.1,
+                startFragPrefetch: true,
+                lowLatencyMode: true,
+                backBufferLength: 10,
+                liveSyncDurationCount: 3,
+                liveMaxLatencyDurationCount: 5,
+                enableWorker: true,
+                fragLoadingTimeOut: 20000,
+                fragLoadingMaxRetry: 6,
+                fragLoadingRetryDelay: 1000,
+                fragLoadingMaxRetryTimeout: 64000
+            });
             hls.loadSource(videoPath);
-            hls.attachMedia(player.tech_.el_);
+            hls.attachMedia(video);
+
             hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                console.log('Manifest parsed');
-                player.play().catch(error => {
-                    console.error('Error attempting to play:', error);
-                });
-                loader.style.display = 'none';
+                console.log('Manifest parsed, start loading...');
+                video.play();
             });
 
-            hls.on(Hls.Events.LEVEL_LOADED, function(event, data) {
-                console.log('LEVEL_LOADED:', data);
-            });
-
-            hls.on(Hls.Events.FRAG_LOADED, function(event, data) {
-                console.log('FRAG_LOADED:', data);
+            hls.on(Hls.Events.FRAG_BUFFERED, function(event, data) {
+                console.log(`Fragment ${data.frag.sn} buffered`);
             });
 
             hls.on(Hls.Events.ERROR, function(event, data) {
-                console.error('Error occurred:', data);
-                loader.style.display = 'none';
+                console.error('HLS.js error:', data);
+                if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                    if (data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR) {
+                        console.log('Buffer stalled error occurred, attempting to recover...');
+                        hls.recoverMediaError();
+                    }
+                }
             });
-        } else if (player.canPlayType('application/vnd.apple.mpegurl')) {
-            player.src({
-                src: videoPath,
-                type: 'application/x-mpegURL'
-            });
-            player.play().catch(error => {
-                console.error('Error attempting to play:', error);
-            });
-            loader.style.display = 'none';
-        }
-    }
 
-    videojs('video', {
-        controls: true,
-        autoplay: true,
-        preload: 'auto'
+            video.addEventListener('timeupdate', function() {
+                currentTimeDisplay.innerText = 'Current Time: ' + video.currentTime.toFixed(2);
+            });
+
+            video.addEventListener('seeking', function() {
+                console.log('seeking 시작됨');
+                handleSeeking(video.currentTime);
+            });
+
+            function handleSeeking(currentTime) {
+                const levelDetails = hls.levels[hls.currentLevel].details;
+                const fragments = levelDetails.fragments;
+                const targetFrag = fragments.find(frag => currentTime >= frag.start && currentTime < frag.end);
+
+                if (targetFrag) {
+                    const targetFragIndex = targetFrag.sn;
+                    console.log(`Target fragment index: ${targetFragIndex}`);
+
+                    // 필요한 프래그먼트만 로드
+                    hls.stopLoad();
+                    hls.config.startPosition = currentTime;
+                    hls.loadLevel = hls.currentLevel;
+                    hls.startLoad(targetFrag.start);
+                }
+            }
+
     });
 </script>
 </body>

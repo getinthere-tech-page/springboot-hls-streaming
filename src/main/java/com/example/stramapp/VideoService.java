@@ -71,10 +71,11 @@ public class VideoService {
             try (FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(outputFilePath, grabber.getImageWidth(), grabber.getImageHeight(), grabber.getAudioChannels())) {
                 recorder.setFormat("hls");
                 recorder.setOption("hls_time", "10");
-                recorder.setOption("hls_list_size", "0");
+                recorder.setOption("hls_list_size", "10"); // 버퍼에 담길 사이즈
                 recorder.setOption("hls_flags", "split_by_time");
                 recorder.setOption("hls_wrap", "0");
                 recorder.setOption("loglevel", "debug");
+                recorder.setOption("hls_playlist_type", "vod");
 
                 // 코덱 설정
                 recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
