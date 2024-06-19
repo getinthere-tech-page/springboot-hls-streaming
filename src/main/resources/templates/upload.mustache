@@ -73,7 +73,7 @@
             document.body.appendChild(overlay);
 
             try {
-                const response = await axios.post('http://localhost:8080/videos/upload', formData, {
+                const response = await axios.post('/videos/upload', formData, {
                     onUploadProgress: function (event) {
                         if (event.lengthComputable) {
                             const percentComplete = (event.loaded / event.total) * 100;

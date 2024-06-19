@@ -28,7 +28,7 @@ dependencies {
     implementation group: 'org.bytedeco', name: 'javacv-platform', version: '1.5.9'
     // https://mvnrepository.com/artifact/org.bytedeco/ffmpeg
     implementation group: 'org.bytedeco', name: 'ffmpeg', version: '6.0-1.5.9'
-
+    implementation 'org.springframework.boot:spring-boot-starter-mustache'
 
 
     implementation 'org.springframework.boot:spring-boot-starter-web'

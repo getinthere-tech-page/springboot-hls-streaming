@@ -1,0 +1,17 @@
+server:
+  servlet:
+    encoding:
+      charset: utf-8
+      force: true
+  port: 8080
+
+spring:
+  mustache:
+    servlet:
+      expose-session-attributes: true
+      expose-request-attributes: true
+
+  servlet:
+    multipart:
+      max-file-size: 1000MB
+      max-request-size: 1000MB

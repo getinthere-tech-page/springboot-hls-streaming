@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>HLS Video Player</title>
+    <link href="https://vjs.zencdn.net/7.11.4/video-js.css" rel="stylesheet">
+    <script src="https://vjs.zencdn.net/7.11.4/video.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body>
+<h1>Stream Video</h1>
+<video id="video" class="video-js vjs-default-skin" controls preload="auto" width="640" height="264" muted></video>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const videoPath = '/videos/good.m3u8';
+        //const videoPath = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8";
+        const video = document.getElementById('video');
+
+        let hls = new Hls({
+            enableWorker: true, // 3M ts 2~4개 정도
+            backBufferLength: 90, // 이전 프래그먼트를 유지하지 90개
+            lowLatencyMode: true
+        });
+        hls.loadSource(videoPath);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, function () {
+            console.log('Manifest parsed, start loading...');
+        });
+
+        hls.on(Hls.Events.FRAG_BUFFERED, function (event, data) {
+            console.log(`Fragment ${data.frag.sn} buffered`);
+        });
+
+        video.addEventListener('seeking', function () {
+            console.log(`seeking 시작됨 : ${video.currentTime}`);
+            hls.startLoad(video.currentTime);
+        });
+
+    });
+</script>
+</body>
+</html>

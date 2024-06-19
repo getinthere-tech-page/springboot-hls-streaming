@@ -1,22 +1,19 @@
 package com.example.stramapp;
 
-import org.springframework.core.io.InputStreamResource;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
-import org.springframework.http.CacheControl;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.FileInputStream;
 import java.net.MalformedURLException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
 
-@CrossOrigin
+// 참고하기
+// https://github.com/joejoe2/spring-video/blob/main/src/main/java/com/joejoe2/video/controller/video/VideoController.java
 @RestController
 @RequestMapping("/videos")
 public class VideoController {
@@ -39,8 +36,45 @@ public class VideoController {
         }
     }
 
+    @GetMapping("/{filename}.m3u8")
+    public ResponseEntity<?> videoHlsM3U8(@PathVariable String filename) {
+        Path file = videoLocation.resolve(filename);
+        try{
+            Resource resource = new UrlResource(file.toUri());
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename + ".m3u8");
+            headers.setContentType(MediaType.parseMediaType("application/vnd.apple.mpegurl"));
+            return new ResponseEntity<Resource>(resource, headers, HttpStatus.OK);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        return ResponseEntity.badRequest().build();
+    }
+
+    @GetMapping("/{tsname}.ts")
+    public ResponseEntity<?> videoHlsTs(@PathVariable String tsname) {
+        Path file = videoLocation.resolve(tsname);
+
+        try{
+            Resource resource = new UrlResource(file.toUri());
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + tsname + ".ts");
+            headers.setContentType(MediaType.parseMediaType(MediaType.APPLICATION_OCTET_STREAM_VALUE));
+            return new ResponseEntity<Resource>(resource, headers, HttpStatus.OK);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        return ResponseEntity.badRequest().build();
+
+
+    }
+
+
     @GetMapping("/{filename:.+}")
     public ResponseEntity<Resource> getVideo(@PathVariable String filename) {
+        System.out.println("파일네임 요청옴 : "+filename);
         try {
             Path file = videoLocation.resolve(filename);
             Resource resource = new UrlResource(file.toUri());
@@ -55,6 +89,7 @@ public class VideoController {
             }
 
             CacheControl cacheControl = CacheControl.maxAge(30, TimeUnit.DAYS).cachePublic();
+
 
             return ResponseEntity.ok()
                     .cacheControl(cacheControl)

@@ -9,13 +9,17 @@ import org.bytedeco.javacv.Frame;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Logger;
 
 @Service
@@ -50,74 +54,47 @@ public class VideoService {
         File inputFile = new File(inputFilePath);
         file.transferTo(inputFile);
 
-        logger.info("Starting FFmpegFrameGrabber for input file: " + inputFilePath);
-        // FFmpegFrameGrabber로 입력 파일 읽기
-        try (FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(inputFilePath)) {
-            grabber.start();
-            logger.info("FFmpegFrameGrabber started");
+        List<String> command = new ArrayList<>();
+        command.add("ffmpeg");
+        command.add("-i");
+        command.add(inputFilePath);
+        command.add("-codec:v");
+        command.add("libx264");
+        command.add("-codec:a");
+        command.add("aac");
+        command.add("-strict");
+        command.add("-2");
+        command.add("-start_number");
+        command.add("0");
+        command.add("-hls_time");
+        command.add("10");
+        command.add("-hls_list_size");
+        command.add("0");
+        command.add("-force_key_frames");
+        command.add("expr:gte(t,n_forced*10)");
+        command.add("-f");
+        command.add("hls");
+        command.add(outputFilePath);
 
-            // 스트림 정보 로그 출력
-            logger.info("Number of Streams: " + grabber.getLengthInFrames());
+        try {
+            ProcessBuilder pb = new ProcessBuilder(command);
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
 
-            // 총 프레임 수와 프레임 레이트를 로그로 출력
-            int totalFrames = grabber.getLengthInFrames();
-            double frameRate = grabber.getFrameRate();
-            double durationInSeconds = totalFrames / frameRate;
-            logger.info("Total Frames: " + totalFrames);
-            logger.info("Frame Rate: " + frameRate);
-            logger.info("Duration (seconds): " + durationInSeconds);
-
-            // FFmpegFrameRecorder로 출력 파일 생성
-            try (FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(outputFilePath, grabber.getImageWidth(), grabber.getImageHeight(), grabber.getAudioChannels())) {
-                recorder.setFormat("hls");
-                recorder.setOption("hls_time", "10");
-                recorder.setOption("hls_list_size", "10"); // 버퍼에 담길 사이즈
-                recorder.setOption("hls_flags", "split_by_time");
-                recorder.setOption("hls_wrap", "0");
-                recorder.setOption("loglevel", "debug");
-                recorder.setOption("hls_playlist_type", "vod");
-
-                // 코덱 설정
-                recorder.setVideoCodec(avcodec.AV_CODEC_ID_H264);
-                recorder.setAudioCodec(avcodec.AV_CODEC_ID_AAC);
-                recorder.setFrameRate(grabber.getFrameRate());
-                recorder.setSampleRate(grabber.getSampleRate());
-                recorder.setAudioChannels(grabber.getAudioChannels());
-
-                // 비디오 및 오디오 비트레이트 설정
-                recorder.setVideoBitrate(grabber.getVideoBitrate());
-                recorder.setAudioBitrate(grabber.getAudioBitrate());
-                //recorder.setPixelFormat(0);
-
-                // 비디오 및 오디오 스트림 매핑
-                recorder.start();
-                logger.info("FFmpegFrameRecorder started");
-
-                // 프레임을 읽어서 기록
-                Frame frame;
-                int frameNumber = 0;
-                while ((frame = grabber.grabFrame()) != null) {
-                    frameNumber++;
-                    if (frame.image != null) {
-                        recorder.record(frame);
-                        //logger.info("Recorded video frame: " + frameNumber);
-                    } else if (frame.samples != null && frame.samples.length > 0) {
-                        recorder.recordSamples(frame.sampleRate, frame.audioChannels, frame.samples);
-                        //logger.info("Recorded audio frame: " + frameNumber);
-                    } else {
-                        //logger.warning("Skipped frame: " + frameNumber);
-                    }
-                }
-
-                // 자원 해제
-                recorder.stop();
-                grabber.stop();
-                logger.info("Recording and grabbing stopped");
-
-            } catch (Exception e) {
-                logger.severe("비디오 인코딩 중 오류가 발생했습니다: " + e.getMessage());
-                throw new IOException("비디오 인코딩 중 오류가 발생했습니다: " + e.getMessage(), e);
+            BufferedReader in = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String line;
+            while ((line = in.readLine()) != null) {
+                System.out.println(line);
             }
+
+            int exitCode = process.waitFor();
+            if (exitCode == 0) {
+                System.out.println("HLS encoding completed successfully.");
+            } else {
+                System.out.println("HLS encoding failed with exit code " + exitCode);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
         return baseName + ".m3u8";
