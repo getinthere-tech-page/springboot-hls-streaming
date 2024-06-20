@@ -40,15 +40,10 @@ public class HlsController {
         Resource resource = hlsService.getVideoRes(tsName);
 
         HttpHeaders headers = new HttpHeaders();
+        // CONTENT_DISPOSITION : 다운로드 동작을 명시적으로 제어하고, 파일 이름을 지정할 수 있습니다.
         headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + tsName);
         headers.setContentType(MediaType.parseMediaType(MediaType.APPLICATION_OCTET_STREAM_VALUE));
         return new ResponseEntity<>(resource, headers, HttpStatus.OK);
-    }
-
-    @GetMapping("/file/{fileName}")
-    public ResponseEntity<Resource> getHlsFile(@PathVariable String fileName) throws IOException {
-        Resource resource = hlsService.getVideoRes(fileName);
-        return new ResponseEntity<>(resource, HttpStatus.OK);
     }
 
     @GetMapping("/convert")
